@@ -19,6 +19,8 @@ class Particles {
         // initialize random non-overlapping particles
         Particles(int N, double m, double r, double v0);
 
+        void get_collisions();
+
         void assert_no_overlap();
         void write_to_file(std::string filename);
 };

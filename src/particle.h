@@ -1,16 +1,14 @@
 #pragma once
 
-#include <cmath>
+#include "utils.h"
 
 class Particle {
     public:
         // position
-        double x;
-        double y;
+        vec pos;
 
-            // velocity
-        double vx;
-        double vy;
+        // velocity
+        vec vel;
 
         // radius
         double r;
