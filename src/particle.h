@@ -1,5 +1,5 @@
 #pragma once
-
+#include "includes.h"
 #include "utils.h"
 
 class Particle {
@@ -22,21 +22,23 @@ class Particle {
         // constructor
         Particle(double x, double y, double vx, double vy, double r, double m);
 
+        // move particle forward in time dt
+        void move_forward(double dt);
+    
+        // collision time and resolve collision functions
+        // particle with particle collision
         double get_collision_time_with(Particle* p);
-
-        double get_collision_time_with_horizontal_wall();
-
-        double get_collision_time_with_vertical_wall();
-
-        void move_forward(double delta_t);
-
         void resolve_collision_with(Particle* p);
+    
+        // particle with horizontal wall collision
+        double get_collision_time_with_hw();
+        void resolve_collision_with_hw();
 
-        void resolve_collision_with_horizontal_wall();
+        // particle with vertical wall collision
+        double get_collision_time_with_vw();
+        void resolve_collision_with_vw();
 
-        void resolve_collision_with_vertical_wall();
         // helper functions
         double dist_squared_to(Particle* p);
-
         friend std::ostream& operator<<(std::ostream& os, Particle* p);
 };

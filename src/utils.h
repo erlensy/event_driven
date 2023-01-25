@@ -1,9 +1,9 @@
 #pragma once
-#include <random>
-#include <iostream>
+#include "includes.h"
 
 double get_rand(double min, double max);
 
+// created own vector struct with operators needed
 struct vec {
     double x;
     double y;

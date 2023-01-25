@@ -1,11 +1,10 @@
-#include <iostream>
-#include "particles.h"
+#include "includes.h"
+#include "gas.h"
 
 int main() {
-    Particles ps{300, 1.0, 0.01, 1.0};
-    //Particles ps{};
-    ps.assert_no_overlap();
-    ps.write_to_file("../data/skrt.txt");
-    ps.simulate();
+    // {int N, double m, double r, double v0}
+    Gas ps{300, 1.0, 0.01, 1.0};
+    
+    // {int frames, double timestep}
+    ps.simulate(1000, 0.1);
 }
-

@@ -32,7 +32,7 @@ struct Collision {
 bool operator<(const Collision& c1, const Collision& c2);
 
 class Gas {
-    public:
+    private:
         // number of particles
         int N;
         
@@ -41,33 +41,49 @@ class Gas {
         
         // priority queue with collisions
         std::priority_queue<Collision> pq;
-
+    
+    public:
         // constructors
         Gas(int N, double m, double r, double v0);
+    
+        void make_particles_with_no_overlap(int n, std::vector<double> v0,
+                                            std::vector<double> r, std::vector<double> m,
+                                            double x_min, double x_max,
+                                            double y_min, double y_max);
         
         // main function which simulates gas
         void simulate(int frames, double timestep);
     
-        // calculate all possible collisions and
-        // add them to the priority queue
-        void initialize();
-    
         // move all particle dt forward in time
         void move_forward(double dt);
+        
+        // wrapper for calling correct collision case
+        void manage_collision(int collision_type, double t);
+        
+        // check if a collision is valid
+        bool valid_collision(const Collision* c);
 
+        // wrapper for calling both get_collisions_walls
+        // and get_collisions_pp
         void get_collisions(Particle* p, double t);
-    
+        
+        // add collisions with particle and walls to pq
         void get_collisions_walls(Particle* p, double t);
+    
+        // add collisions between particle and all other
+        // particles to pq
         void get_collisions_pp(Particle* p, double t);
-
+        
+        // resolve and add collisions to the pq,
+        // for each collision case
         void manage_p_vw_collision(Particle* p, double t);
         void manage_p_hw_collision(Particle* p, double t);
         void manage_p_p_collision(Particle* p1, Particle* p2, double t);
         
-
-        // helper functions
+        // used for testing if particles have overlap
         void assert_no_overlap();
-    
+        
+        // destructor which deallocates memory
         ~Gas();
 };
 
