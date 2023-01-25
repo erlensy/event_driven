@@ -1,3 +1,5 @@
 *.swp
 build/*
 data/*
+figures/*
+.DS_Store
