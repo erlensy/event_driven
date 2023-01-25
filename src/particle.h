@@ -37,4 +37,6 @@ class Particle {
         void resolve_collision_with_vertical_wall();
         // helper functions
         double dist_squared_to(Particle* p);
+
+        friend std::ostream& operator<<(std::ostream& os, Particle* p);
 };

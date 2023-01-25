@@ -45,11 +45,19 @@ class Particles {
         void move_forward(double delta_t);
         void initialize();
 
-        void get_collisions(Particle* p);
+        void get_collisions(Particle* p, double t);
+        void get_collisions_two(Particle* p1, Particle* p2);
+        void get_collisions_walls(Particle* p, double t);
+        void get_collisions_pp(Particle* p, double t);
+
+        void p_vw_collision(Particle* p, double t);
+        void p_hw_collision(Particle* p, double t);
+        void p_p_collision(Particle* p1, Particle* p2, double t);
         void simulate();
 
         void assert_no_overlap();
         void write_to_file(std::string filename);
+        void write_to_ofstream(std::ofstream out);
 
         ~Particles(); 
 };

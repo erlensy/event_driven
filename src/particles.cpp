@@ -43,105 +43,118 @@ Particles::Particles(int N, double m, double r, double v0) : N{N} {
     }
 }
 
-Particles::Particles() {
-    N = 2;
-    Particle* p1 = new Particle({0.25, 0.50, 0.2, 0.0, 0.1, 1.0});
-    Particle* p2 = new Particle({0.75, 0.50, -0.5, -0.0, 0.1, 1.0});
-    particles.push_back(p1);
-    particles.push_back(p2);
+void Particles::simulate() {
+    initialize();
+
+    double t = 0.0;
+    double timestep = 0.001;
+    double end = timestep;
+    int frames = 1000;
+
+    std::ofstream out; 
+    out.open("../data/skrt.txt");
+    out << "N timestep frames\n";
+    out << "-----------------------------\n";
+    out << N << " " << timestep << " " << frames << "\n\n";
+    out << "x y vx vy r m\n";
+    out << "-----------------------------\n";
+    for (int i = 0; i < N; i++) {
+        out << particles[i];
+    }
+    out << "\n";
+    int frames_count = 1;
+    while (frames_count <= frames - 1) {
+        // move forward
+        double delta_t = pq.top().t - t;
+        move_forward(delta_t);
+        t = pq.top().t;
+        for (int i = 0; i < N; i++) {
+            out << particles[i];
+        }
+        out << "\n";
+        frames_count++;
+
+        // resolve and calcualte new collisions
+        if (pq.top().collision_type == collision_type_map.at("particle-particle")) {
+            p_p_collision(pq.top().p1, pq.top().p2, t);
+        }
+        else if (pq.top().collision_type == collision_type_map.at("particle-vertical_wall")) {
+            p_vw_collision(pq.top().p1, t);
+        }
+        else {
+            p_hw_collision(pq.top().p1, t);
+        }
+        
+        // check if next collision is valid 
+        while (true) {
+            pq.pop();
+            if (pq.top().collision_type == collision_type_map.at("particle-particle")) {
+                if (pq.top().p1_count == pq.top().p1->count && pq.top().p2_count == pq.top().p2->count) {
+                    break;
+                }
+            }
+            else if (pq.top().p1_count == pq.top().p1->count) {
+                break;
+            }
+        }
+    }
+    out.close();
+}
+
+void Particles::p_p_collision(Particle* p1, Particle* p2, double t) {
+    pq.top().p1->resolve_collision_with(pq.top().p2);
+    pq.top().p1->count += 1;
+    pq.top().p2->count += 1;
+
+    get_collisions(pq.top().p1, t);
+    get_collisions(pq.top().p2, t);
+}
+
+void Particles::p_hw_collision(Particle* p, double t) {
+    p->resolve_collision_with_horizontal_wall();
+    p->count += 1;
+    get_collisions(p, t);
+}
+
+void Particles::p_vw_collision(Particle* p, double t) {
+    p->resolve_collision_with_vertical_wall();
+    p->count += 1;
+    get_collisions(p, t);
+}
+
+void Particles::get_collisions(Particle* p, double t) {
+    get_collisions_pp(p, t);
+    get_collisions_walls(p, t);
+}
+
+void Particles::get_collisions_pp(Particle* p, double t) {
+    for (int i = 0; i < N; i++) {
+        if (particles[i] != p) {
+            double delta_t = p->get_collision_time_with(particles[i]);
+            if (delta_t != -1.0) {
+                Collision c{t + delta_t, p, particles[i], collision_type_map.at("particle-particle"), p->count, particles[i]->count}; 
+                pq.push(c);
+            }
+        }
+    }
+}
+
+void Particles::get_collisions_walls(Particle* p, double t) {
+    double delta_t_h = p->get_collision_time_with_horizontal_wall();
+    if (delta_t_h != -1.0) {
+        Collision c{t + delta_t_h, p, NULL, collision_type_map.at("particle-horizontal_wall"), p->count, 0}; 
+        pq.push(c);
+    }
+    double delta_t_v = p->get_collision_time_with_vertical_wall();
+    if (delta_t_v != -1.0) {
+        Collision c{t + delta_t_v, p, NULL, collision_type_map.at("particle-vertical_wall"), p->count, 0}; 
+        pq.push(c);
+    }
 }
 
 void Particles::initialize() {
-    for (int i = 0; i < N - 1; i++) {
-        for (int j = i + 1; j < N; j++) {
-            double t = particles[i]->get_collision_time_with(particles[j]);
-            if (t != -1.0) {
-                Collision c{t, particles[i], particles[j], collision_type_map.at("particle-particle"), 0, 0}; 
-                pq.push(c);
-            }
-        }
-    }
-
     for (int i = 0; i < N; i++) {
-        double t_h = particles[i]->get_collision_time_with_horizontal_wall();
-        if (t_h != -1.0) {
-            Collision c{t_h, particles[i], NULL, collision_type_map.at("particle-horizontal_wall"), 0, 0}; 
-            pq.push(c);
-        }
-            
-        double t_v = particles[i]->get_collision_time_with_vertical_wall();
-        if (t_v != -1.0) {
-            Collision c{t_h, particles[i], NULL, collision_type_map.at("particle-vertical_wall"), 0, 0}; 
-            pq.push(c);
-        }
-    }
-}
-
-void Particles::get_collisions(Particle* p) {
-    for (int i = 0; i < N; i++) {
-        if (particles[i] != p) {
-            double t = p->get_collision_time_with(particles[i]);
-            if (t != -1.0) {
-                Collision c{t, p, particles[i], collision_type_map.at("particle-particle"), p->count, particles[i]->count}; 
-                pq.push(c);
-            }
-        }
-    }
-    double t_h = p->get_collision_time_with_horizontal_wall();
-    if (t_h != -1.0) {
-        Collision c{t_h, p, NULL, collision_type_map.at("particle-horizontal_wall"), p->count, 0}; 
-        pq.push(c);
-    }
-        
-    double t_v = p->get_collision_time_with_vertical_wall();
-    if (t_v != -1.0) {
-        Collision c{t_h, p, NULL, collision_type_map.at("particle-vertical_wall"), p->count, 0}; 
-        pq.push(c);
-    }
-}
-
-void Particles::simulate() {
-    // initialize step
-    write_to_file("../data/0.txt");
-    initialize();
-    int i = 1;
-    while (!pq.empty()) {
-        move_forward(pq.top().t);
-        if (pq.top().collision_type == collision_type_map.at("particle-particle")) {
-            if (pq.top().p1_count == pq.top().p1->count && pq.top().p2_count == pq.top().p2->count) {
-                pq.top().p1->resolve_collision_with(pq.top().p2);
-                pq.top().p1->count += 1;
-                pq.top().p2->count += 1;
-
-                // get new collision
-                get_collisions(pq.top().p1);
-                get_collisions(pq.top().p2);
-            }
-        }
-        else if (pq.top().collision_type == collision_type_map.at("particle-vertical_wall")) {
-            if (pq.top().p1_count == pq.top().p1->count) {
-                pq.top().p1->resolve_collision_with_vertical_wall();
-                pq.top().p1->count += 1;
-
-                // get new collision
-                get_collisions(pq.top().p1);
-            }
-        }
-        else {
-            if (pq.top().p1_count == pq.top().p1->count) {
-                pq.top().p1->resolve_collision_with_horizontal_wall();
-                pq.top().p1->count += 1;
-
-                // get new collision
-                get_collisions(pq.top().p1);
-            }
-        }
-        pq.pop();
-        write_to_file("../data/" + std::to_string(i) + ".txt");
-        i++;
-        if (i > 10) {
-            break;
-        }
+        get_collisions(particles[i], 0);
     }
 }
 
@@ -155,7 +168,7 @@ void Particles::write_to_file(std::string filename) {
     std::ofstream out; 
     out.open(filename);
     for (int i = 0; i < N; i++) {
-        out << particles[i]->pos.x << " " << particles[i]->pos.y << " " << particles[i]->vel.x << " " << particles[i]->vel.y << " " << particles[i]->r << " " << particles[i]->m << "\n";
+        out << particles[i];
     }
     out.close();
 }

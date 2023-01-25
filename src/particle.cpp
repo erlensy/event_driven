@@ -26,16 +26,6 @@ double Particle::get_collision_time_with(Particle* p) {
 }
 
 double Particle::get_collision_time_with_horizontal_wall() {
-    if (vel.x == 0.0) {
-        return - 1.0;
-    }
-    if (vel.x > 0) {
-        return (1.0 - r - pos.x) / vel.x;
-    }
-    return (r - pos.x) / vel.x;
-}
-
-double Particle::get_collision_time_with_vertical_wall() {
     if (vel.y == 0.0) {
         return - 1.0;
     }
@@ -43,6 +33,16 @@ double Particle::get_collision_time_with_vertical_wall() {
         return (1.0 - r - pos.y) / vel.y;
     }
     return (r - pos.y) / vel.y;
+}
+
+double Particle::get_collision_time_with_vertical_wall() {
+    if (vel.x == 0.0) {
+        return - 1.0;
+    }
+    if (vel.x > 0) {
+        return (1.0 - r - pos.x) / vel.x;
+    }
+    return (r - pos.x) / vel.x;
 }
 
 void Particle::move_forward(double delta_t) {
@@ -64,14 +64,19 @@ void Particle::resolve_collision_with(Particle* p) {
 }
 
 void Particle::resolve_collision_with_horizontal_wall() {
-    vel = vec{-vel.x, vel.y};
+    vel = vec{vel.x, -vel.y};
 }
 
 void Particle::resolve_collision_with_vertical_wall() {
-    vel = vec{vel.x, -vel.y};
+    vel = vec{-vel.x, vel.y};
 }
 
 double Particle::dist_squared_to(Particle* p) {
     vec delta_pos = pos - p->pos;
     return delta_pos * delta_pos;
+}
+
+std::ostream& operator<<(std::ostream& os, Particle* p) {
+    os << p->pos.x << " " << p->pos.y << " " << p->vel.x << " " << p->vel.y << " " << p->r << " " << p->m << "\n";
+    return os;
 }
