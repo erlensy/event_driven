@@ -24,3 +24,11 @@ vec operator-(vec& v1, vec& v2) {
 double operator*(vec& v1, vec& v2) {
     return v1.x * v2.x + v1.y * v2.y;
 } 
+
+vec operator*(vec& v, double c) {
+    return vec{v.x * c, v.y * c};
+}
+
+vec operator*(double c, vec& v) {
+    return vec{v.x * c, v.y * c};
+}
