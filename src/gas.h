@@ -42,9 +42,16 @@ class Gas {
         // priority queue with collisions
         std::priority_queue<Collision> pq;
     
+        // collision parameter
+        double epsilon;
+    
     public:
         // constructors
-        Gas(int N, double m, double r, double v0);
+        Gas(int N, double epsilon, std::vector<double>& m, std::vector<double>& r, std::vector<double>& v0,
+            double x_min, double x_max, double y_min, double y_max);
+        
+        // helper functions for constructor
+        void make_particle(double x, double y, double vx, double vy, double r, double m);
     
         void make_particles_with_no_overlap(int n, std::vector<double> v0,
                                             std::vector<double> r, std::vector<double> m,

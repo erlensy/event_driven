@@ -9,26 +9,24 @@ bool operator<(const Collision& c1, const Collision& c2) {
     return false;
 }
 
-Gas::Gas(int N, double m, double r, double v0) : N{N} {
-    std::vector<double> v0_(N, v0);
-    std::vector<double> m_(N, m);
-    std::vector<double> r_(N, r);
-    make_particles_with_no_overlap(N, v0_, r_, m_, r, 1.0 - r, r, 0.5);
-}
-
-void Gas::make_particles_with_no_overlap(int n, std::vector<double> v0,
-                                         std::vector<double> r, std::vector<double> m,
-                                         double x_min, double x_max,
-                                         double y_min, double y_max) {
-    for (int i = 0; i < n; i++) {
+Gas::Gas(int N, double epsilon, std::vector<double>& m, std::vector<double>& r, std::vector<double>& v0,
+         double x_min, double x_max, double y_min, double y_max) : N{N}, epsilon{epsilon} {
+    // make n particles with random posistions
+    for (int i = 0; i < N; i++) {
         double theta = get_rand(0.0, 2.0 * M_PI);
         double vx = v0[i] * cos(theta);
         double vy = v0[i] * sin(theta);
         bool overlap = true;
+        
+        // while overlap draw new positions
         do {
-            double x = get_rand(x_min, x_max);
-            double y = get_rand(y_min, y_max);
+            double x = get_rand(x_min + r[i], x_max - r[i]);
+            double y = get_rand(y_min + r[i], y_max - r[i]);
+    
+            // create particle
             Particle* p = new Particle{x, y, vx, vy, r[i], m[i]};
+            
+            // check if overlap
             int count = 0;
             for (int j = 0; j < particles.size(); j++) {
                 if (particles[j]->dist_squared_to(p) > pow(particles[j]->r + r[i], 2)) {
@@ -38,6 +36,8 @@ void Gas::make_particles_with_no_overlap(int n, std::vector<double> v0,
                     break;
                 }
             }
+            
+            // if no overlap, add particle to particles
             if (count == particles.size()) {
                 overlap = false;
                 particles.push_back(p);
@@ -47,7 +47,16 @@ void Gas::make_particles_with_no_overlap(int n, std::vector<double> v0,
     }
 }
 
+void Gas::make_particle(double x, double y, double vx, double vy, double r, double m) {
+    // make one particle and add it to particles
+    Particle* p = new Particle{x, y, vx, vy, r, m};
+    particles.push_back(p);
+    N += 1;
+}
+
 void Gas::simulate(int frames, double timestep) {
+    
+    assert(particles.size() != 0);
     double t = 0.0;
     for (int i = 0; i < N; i++) {
         get_collisions(particles[i], t);
@@ -60,21 +69,27 @@ void Gas::simulate(int frames, double timestep) {
     out << N << " " << timestep << " " << frames << "\n\n";
     out << "x y vx vy r m\n";
     out << "-----------------------------\n";
-    for (int i = 0; i < N; i++) {
-        out << particles[i];
+    int frames_count = 0;
+    double end = timestep;
+    for (int j = 0; j < N; j++) {
+        out << particles[j];
     }
     out << "\n";
-    int frames_count = 1;
+    frames_count++;
     while (frames_count <= frames - 1) {
         // move forward
+        
         double dt = pq.top().t - t;
-        move_forward(dt);
-        t = pq.top().t;
-        for (int i = 0; i < N; i++) {
-            out << particles[i];
+        for (int j = 0; j < N; j++) {
+            out << particles[j];
         }
         out << "\n";
         frames_count++;
+        if (frames_count > frames) {
+            break;
+        }
+        move_forward(dt);
+        t = pq.top().t;
 
         // resolve and calcualte new collisions
         manage_collision(pq.top().collision_type, t);
@@ -125,7 +140,7 @@ bool Gas::valid_collision(const Collision* c) {
 void Gas::manage_p_p_collision(Particle* p1, Particle* p2, double t) {
     // resolve and add new collisions to priority queue
     // only use for particle-particle collision
-    pq.top().p1->resolve_collision_with(pq.top().p2);
+    pq.top().p1->resolve_collision_with(pq.top().p2, epsilon);
     pq.top().p1->count += 1;
     pq.top().p2->count += 1;
 
@@ -136,7 +151,7 @@ void Gas::manage_p_p_collision(Particle* p1, Particle* p2, double t) {
 void Gas::manage_p_hw_collision(Particle* p, double t) {
     // resolve and add new collisions to priority queue
     // only use for particle-horizontal wall collision
-    p->resolve_collision_with_hw();
+    p->resolve_collision_with_hw(epsilon);
     p->count += 1;
     get_collisions(p, t);
 }
@@ -144,7 +159,7 @@ void Gas::manage_p_hw_collision(Particle* p, double t) {
 void Gas::manage_p_vw_collision(Particle* p, double t) {
     // resolve and add new collisions to priority queue
     // only use for particle-vertical wall collision
-    p->resolve_collision_with_vw();
+    p->resolve_collision_with_vw(epsilon);
     p->count += 1;
     get_collisions(p, t);
 }
