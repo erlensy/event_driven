@@ -49,7 +49,8 @@ class Gas {
         // constructors
         Gas(int N, double epsilon, std::vector<double>& m, std::vector<double>& r, std::vector<double>& v0,
             double x_min, double x_max, double y_min, double y_max);
-        
+    
+       
         // helper functions for constructor
         void make_particle(double x, double y, double vx, double vy, double r, double m);
     
@@ -59,7 +60,7 @@ class Gas {
                                             double y_min, double y_max);
         
         // main function which simulates gas
-        void simulate(int frames, double timestep);
+        void simulate(int frames, double timestep, double end);
     
         // move all particle dt forward in time
         void move_forward(double dt);
@@ -73,6 +74,8 @@ class Gas {
         // wrapper for calling both get_collisions_walls
         // and get_collisions_pp
         void get_collisions(Particle* p, double t);
+    
+        void get_all_collisions(double t);
         
         // add collisions with particle and walls to pq
         void get_collisions_walls(Particle* p, double t);
@@ -89,6 +92,11 @@ class Gas {
         
         // used for testing if particles have overlap
         void assert_no_overlap();
+    
+        // save to file functions
+        void save_particles(std::ofstream& out);
+        std::ofstream initialize_ofstream(std::string filename, double timestep, int frames);
+    
         
         // destructor which deallocates memory
         ~Gas();

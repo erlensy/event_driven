@@ -19,6 +19,7 @@ Gas::Gas(int N, double epsilon, std::vector<double>& m, std::vector<double>& r, 
         bool overlap = true;
         
         // while overlap draw new positions
+        int failed_count = 0;
         do {
             double x = get_rand(x_min + r[i], x_max - r[i]);
             double y = get_rand(y_min + r[i], y_max - r[i]);
@@ -42,6 +43,11 @@ Gas::Gas(int N, double epsilon, std::vector<double>& m, std::vector<double>& r, 
                 overlap = false;
                 particles.push_back(p);
             }
+            
+            if (failed_count > 1000000) {
+                throw std::runtime_error("Could not make particles without overlap. Try fewer particles or less radius");
+            }
+            failed_count++;
         }
         while (overlap);
     }
@@ -54,43 +60,18 @@ void Gas::make_particle(double x, double y, double vx, double vy, double r, doub
     N += 1;
 }
 
-void Gas::simulate(int frames, double timestep) {
-    
+void Gas::simulate(int frames, double timestep, double end) {
     assert(particles.size() != 0);
+    std::ofstream out = initialize_ofstream("../data/data.txt", timestep, frames);
+    
     double t = 0.0;
-    for (int i = 0; i < N; i++) {
-        get_collisions(particles[i], t);
-    }
-
-    std::ofstream out; 
-    out.open("../data/skrt.txt");
-    out << "N timestep frames\n";
-    out << "-----------------------------\n";
-    out << N << " " << timestep << " " << frames << "\n\n";
-    out << "x y vx vy r m\n";
-    out << "-----------------------------\n";
-    int frames_count = 0;
-    double end = timestep;
-    for (int j = 0; j < N; j++) {
-        out << particles[j];
-    }
-    out << "\n";
-    frames_count++;
-    while (frames_count <= frames - 1) {
-        // move forward
-        
+    get_all_collisions(t);
+    while (t < end) {
         double dt = pq.top().t - t;
-        for (int j = 0; j < N; j++) {
-            out << particles[j];
-        }
-        out << "\n";
-        frames_count++;
-        if (frames_count > frames) {
-            break;
-        }
+        save_particles(out);
         move_forward(dt);
+        
         t = pq.top().t;
-
         // resolve and calcualte new collisions
         manage_collision(pq.top().collision_type, t);
         
@@ -164,6 +145,12 @@ void Gas::manage_p_vw_collision(Particle* p, double t) {
     get_collisions(p, t);
 }
 
+void Gas::get_all_collisions(double t) {
+    for (int i = 0; i < N; i++) {
+        get_collisions(particles[i], t);
+    }
+}
+
 void Gas::get_collisions(Particle* p, double t) {
     get_collisions_pp(p, t);
     get_collisions_walls(p, t);
@@ -206,9 +193,28 @@ void Gas::assert_no_overlap() {
     }
 }
 
-Gas::~Gas() {
-    for (int i = 0; i < N; i++) {
-        delete particles[i];
+void Gas::save_particles(std::ofstream& out) {
+    for (int j = 0; j < N; j++) {
+        out << particles[j];
     }
-    particles.clear();
+    out << "\n";
+}
+
+std::ofstream Gas::initialize_ofstream(std::string filename, double timestep, int frames) {
+    std::ofstream out;
+    out.open(filename);
+    out << "N timestep frames\n";
+    out << "-----------------------------\n";
+    out << N << " " << timestep << " " << frames << "\n\n";
+    out << "x y vx vy r m\n";
+    out << "-----------------------------\n";
+    return out;
+}
+
+Gas::~Gas() {
+    for (auto& p : particles) {
+        delete p;
+        p = nullptr;
+    }
+    particles.erase(std::remove(particles.begin(), particles.end(), nullptr), particles.end());
 }
