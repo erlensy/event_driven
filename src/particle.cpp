@@ -11,7 +11,6 @@ void Particle::move_forward(double dt) {
 double Particle::get_collision_time_with(Particle* p) {
     // returns collision time between *this particle
     // and particle p. returns -1.0 if no collision is found
-    
     vec delta_vel = p->vel - vel;
     vec delta_pos = p->pos - pos;
     double c1 = delta_vel * delta_pos;
@@ -34,7 +33,7 @@ double Particle::get_collision_time_with(Particle* p) {
     return -(c1 + sqrt(d)) / c2;
 }
 
-void Particle::resolve_collision_with(Particle* p) {
+void Particle::resolve_collision_with(Particle* p, double epsilon) {
     // updates velocities of *this particle and particle p
     // should only be called if these two particles
     // currently are colliding
@@ -44,8 +43,8 @@ void Particle::resolve_collision_with(Particle* p) {
     vec delta_pos = p->pos - pos;
     vec delta_vel = p->vel - vel;
     double c1 = delta_pos * delta_vel;
-    vec vel1 = 2.0 * rho1 * c1 / RR * delta_pos;
-    vec vel2 = 2.0 * rho2 * c1 / RR * delta_pos;
+    vec vel1 = (1.0 + epsilon) * rho1 * c1 / RR * delta_pos;
+    vec vel2 = (1.0 + epsilon) * rho2 * c1 / RR * delta_pos;
     vel = vel + vel1;
     p->vel = p->vel - vel2;
 }
@@ -62,10 +61,10 @@ double Particle::get_collision_time_with_hw() {
     return (r - pos.y) / vel.y;
 }
 
-void Particle::resolve_collision_with_hw() {
+void Particle::resolve_collision_with_hw(double epsilon) {
     // updates velocity of *this particle under
     // a collision with a horizontal wall
-    vel = vec{vel.x, -vel.y};
+    vel = vec{epsilon * vel.x, -epsilon * vel.y};
 }
 
 double Particle::get_collision_time_with_vw() {
@@ -80,10 +79,10 @@ double Particle::get_collision_time_with_vw() {
     return (r - pos.x) / vel.x;
 }
 
-void Particle::resolve_collision_with_vw() {
+void Particle::resolve_collision_with_vw(double epsilon) {
     // updates velocity of *this particle under
     // a collision with a vertical wall
-    vel = vec{-vel.x, vel.y};
+    vel = vec{-epsilon*vel.x, epsilon*vel.y};
 }
 
 double Particle::dist_squared_to(Particle* p) {
