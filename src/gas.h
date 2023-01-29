@@ -94,7 +94,7 @@ class Gas {
         void assert_no_overlap();
     
         // save to file functions
-        void save_particles(std::ofstream& out);
+        void save_particles(std::ofstream& out, double& t);
         std::ofstream initialize_ofstream(std::string filename, double timestep, int frames);
     
         

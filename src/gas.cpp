@@ -65,13 +65,34 @@ void Gas::simulate(int frames, double timestep, double end) {
     std::ofstream out = initialize_ofstream("../data/data.txt", timestep, frames);
     
     double t = 0.0;
+    double rest = 0.0;
     get_all_collisions(t);
     while (t < end) {
         double dt = pq.top().t - t;
-        save_particles(out);
-        move_forward(dt);
+        if (rest < dt) {
+            move_forward(rest);
+            t += rest;
+            dt -= rest;
+            int n = dt / timestep;
+            for (int i = 0; i < n; i++) {
+                save_particles(out, t);
+                move_forward(timestep);
+                t += timestep;
+            }
+            save_particles(out, t);
+            double k = dt - n * timestep;
+            move_forward(k);
+            t += k;
+            rest = timestep - k;
+        }
         
-        t = pq.top().t;
+        else {
+            move_forward(dt);
+            t += dt;
+            rest -= dt;
+        }
+        
+        // save_particles(out, t);
         // resolve and calcualte new collisions
         manage_collision(pq.top().collision_type, t);
         
@@ -193,9 +214,9 @@ void Gas::assert_no_overlap() {
     }
 }
 
-void Gas::save_particles(std::ofstream& out) {
+void Gas::save_particles(std::ofstream& out, double& t) {
     for (int j = 0; j < N; j++) {
-        out << particles[j];
+        out << t << " " << particles[j];
     }
     out << "\n";
 }
