@@ -62,14 +62,17 @@ class Gas {
         // main function which simulates gas
         void simulate(int frames, double timestep, double end);
     
+        // move forward and save at mulitplum of timesteps
+        double move_forward_and_save_at_correct_times(std::ofstream& out, double t, double dt, double timestep, double rest);
+    
         // move all particle dt forward in time
         void move_forward(double dt);
         
         // wrapper for calling correct collision case
-        void manage_collision(int collision_type, double t);
+        void manage_collision(int collision_type, Particle* p1, Particle* p2, double t);
         
         // check if a collision is valid
-        bool valid_collision(const Collision* c);
+        bool valid_collision(int collision_type, int p1_count, Particle* p1, int p2_count, Particle* p2);
 
         // wrapper for calling both get_collisions_walls
         // and get_collisions_pp

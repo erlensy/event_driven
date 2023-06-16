@@ -43,6 +43,10 @@ Gas::Gas(int N, double epsilon, std::vector<double>& m, std::vector<double>& r, 
                 overlap = false;
                 particles.push_back(p);
             }
+            else {
+                delete p;
+                p = nullptr;
+            }
             
             if (failed_count > 1000000) {
                 throw std::runtime_error("Could not make particles without overlap. Try fewer particles or less radius");
@@ -64,45 +68,70 @@ void Gas::simulate(int frames, double timestep, double end) {
     assert(particles.size() != 0);
     std::ofstream out = initialize_ofstream("../data/data.txt", timestep, frames);
     
+    // time variables
     double t = 0.0;
     double rest = 0.0;
+     
+    // add all collisions to priority queue
     get_all_collisions(t);
+    double ct = 0.0;
+    
+    // run simulation until end time
     while (t < end) {
+        // calculate availabe time until next collision
         double dt = pq.top().t - t;
-        if (rest < dt) {
-            move_forward(rest);
-            t += rest;
-            dt -= rest;
-            int n = dt / timestep;
-            for (int i = 0; i < n; i++) {
-                save_particles(out, t);
-                move_forward(timestep);
-                t += timestep;
-            }
-            save_particles(out, t);
-            double k = dt - n * timestep;
-            move_forward(k);
-            t += k;
-            rest = timestep - k;
-        }
+        int collision_type = pq.top().collision_type;
+        auto p1 = pq.top().p1;
+        auto p2 = pq.top().p2;
+        int p1_count = pq.top().p1_count;
+        int p2_count = pq.top().p2_count;
         
-        else {
-            move_forward(dt);
-            t += dt;
-            rest -= dt;
-        }
+        // move particles forward and save at a multiplum of timesteps
+        rest = move_forward_and_save_at_correct_times(out, t, dt, timestep, rest);
+        t += dt;
         
-        // save_particles(out, t);
         // resolve and calcualte new collisions
-        manage_collision(pq.top().collision_type, t);
-        
+        manage_collision(collision_type, p1, p2, t);
+
         // check if next collision is valid
         do {
+            // if not valid
             pq.pop();
+            collision_type = pq.top().collision_type;
+            p1 = pq.top().p1;
+            p2 = pq.top().p2;
+            p1_count = pq.top().p1_count;
+            p2_count = pq.top().p2_count;
         }
-        while (!(valid_collision(&pq.top())));
+        while (!(valid_collision(collision_type, p1_count, p1, p2_count, p2)));
     }
     out.close();
+}
+
+double Gas::move_forward_and_save_at_correct_times(std::ofstream& out, double t, double dt, double timestep, double rest) {
+    if (rest < dt) {
+        // move forward what we missed with the last bit,
+        // such that we get outputs which are multiplum of timesteps
+        move_forward(rest);
+        t += rest;
+        dt -= rest;
+        
+        // move particles forward multiplum of timesteps
+        int n = dt / timestep;
+        for (int i = 0; i < n; i++) {
+            save_particles(out, t);
+            move_forward(timestep);
+            t += timestep;
+        }
+        save_particles(out, t);
+        
+        // move particles forward exactly to the next collision
+        move_forward(dt - n * timestep);
+        return rest;
+    }
+    // if (rest > dt) we just move to next collision without saving
+    move_forward(dt);
+    return rest - dt;
 }
 
 void Gas::move_forward(double dt) {
@@ -112,28 +141,29 @@ void Gas::move_forward(double dt) {
     }
 }
 
-void Gas::manage_collision(int collision_type, double t) {
+void Gas::manage_collision(int collision_type, Particle* p1, Particle* p2, double t) {
     // call correct function dependening on collision type
+    
     if (collision_type == collision_type_map.at("particle-particle")) {
-        manage_p_p_collision(pq.top().p1, pq.top().p2, t);
+        manage_p_p_collision(p1, p2, t);
     }
     else if (collision_type == collision_type_map.at("particle-vertical_wall")) {
-        manage_p_vw_collision(pq.top().p1, t);
+        manage_p_vw_collision(p1, t);
     }
     else {
-        manage_p_hw_collision(pq.top().p1, t);
+        manage_p_hw_collision(p1, t);
     }
 }
 
-bool Gas::valid_collision(const Collision* c) {
+bool Gas::valid_collision(int collision_type, int p1_count, Particle* p1, int p2_count, Particle* p2) {
     // return true if c is a valid collision (collision count is equal
     // in collision c and for the particle)
-    if (c->collision_type == collision_type_map.at("particle-particle")) {
-        if (c->p1_count == c->p1->count && c->p2_count == c->p2->count) {
+    if (collision_type == collision_type_map.at("particle-particle")) {
+        if (p1_count == p1->count && p2_count == p2->count) {
             return true;
         }
     }
-    else if (c->p1_count == c->p1->count) {
+    else if (p1_count == p1->count) {
         return true;
     }
     return false;
@@ -142,12 +172,13 @@ bool Gas::valid_collision(const Collision* c) {
 void Gas::manage_p_p_collision(Particle* p1, Particle* p2, double t) {
     // resolve and add new collisions to priority queue
     // only use for particle-particle collision
-    pq.top().p1->resolve_collision_with(pq.top().p2, epsilon);
-    pq.top().p1->count += 1;
-    pq.top().p2->count += 1;
+    p1->resolve_collision_with(p2, epsilon);
 
-    get_collisions(pq.top().p1, t);
-    get_collisions(pq.top().p2, t);
+    p1->count += 1;
+    p2->count += 1;
+    
+    get_collisions(p1, t);
+    get_collisions(p2, t);
 }
 
 void Gas::manage_p_hw_collision(Particle* p, double t) {
@@ -167,8 +198,18 @@ void Gas::manage_p_vw_collision(Particle* p, double t) {
 }
 
 void Gas::get_all_collisions(double t) {
+    for (int i = 0; i < N - 1; i++) {
+        for (int j = i + 1; j < N; j++) {
+            double dt = particles[i]->get_collision_time_with(particles[j]);
+            // if dt is -1.0 collision time is infinite
+            if (dt != -1.0) {
+                Collision c{t + dt, particles[i], particles[j], collision_type_map.at("particle-particle"), particles[i]->count, particles[j]->count};
+                pq.push(c);
+            }
+        }
+    }
     for (int i = 0; i < N; i++) {
-        get_collisions(particles[i], t);
+        get_collisions_walls(particles[i], t);
     }
 }
 
